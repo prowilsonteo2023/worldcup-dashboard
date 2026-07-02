@@ -243,7 +243,7 @@
                 const data = await res.json();
 
                 if (data.status === 'ok') {
-                    container.innerHTML = data.items.slice(0, 10).map(item => `
+                    container.innerHTML = data.items.slice(0, 20).map(item => `
                         <article class="bg-[#111827] border border-gray-800/60 p-4 rounded-xl transition-all duration-300 hover:border-amber-500/30 hover:bg-[#151f33] group relative overflow-hidden">
                             <div class="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-amber-400 to-amber-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                             <div class="flex justify-between items-center gap-2 mb-1.5">
