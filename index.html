@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>World Cup Live Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,800;1,700&family=Inter:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        .font-sporty {
+            font-family: 'Barlow Condensed', sans-serif;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+
+<body class="bg-[#0b0f19] text-gray-100 min-h-screen selection:bg-emerald-500 selection:text-black">
+
+    <!-- Header / Top Navigation Bar -->
+    <header
+        class="bg-[#111827]/80 backdrop-blur-md border-b border-emerald-500/20 py-4 px-6 sticky top-0 z-50 shadow-2xl shadow-emerald-950/20">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div
+                    class="bg-gradient-to-br from-emerald-400 to-teal-600 p-2 rounded-xl shadow-lg shadow-emerald-500/20">
+                    <span class="text-xl">🏆</span>
+                </div>
+                <h1
+                    class="text-2xl font-sporty font-extrabold italic tracking-wider bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent uppercase">
+                    WC LiveCenter
+                </h1>
+            </div>
+            <div
+                class="flex items-center gap-2 bg-[#1f2937] border border-gray-700/60 rounded-full px-3 py-1.5 shadow-inner">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                <span id="refresh-status"
+                    class="text-[11px] font-semibold text-emerald-400 uppercase tracking-wider">OPEN NETWORK
+                    ACTIVE</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+        <!-- Matches Main Column -->
+        <section class="lg:col-span-2 space-y-12">
+
+            <!-- SECTION 1: RECENT RESULTS -->
+            <div class="space-y-6">
+                <div class="border-b border-gray-800 pb-4">
+                    <h2
+                        class="text-xl font-sporty font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
+                        <span class="w-1.5 h-5 bg-emerald-500 rounded-sm inline-block"></span> Recent Results
+                    </h2>
+                </div>
+                <div id="recent-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="animate-pulse bg-[#111827] border border-gray-800 rounded-2xl h-40"></div>
+                </div>
+            </div>
+
+            <!-- SECTION 2: UPCOMING MATCHES -->
+            <div class="space-y-6">
+                <div class="border-b border-gray-800 pb-4">
+                    <h2
+                        class="text-xl font-sporty font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-2">
+                        <span class="w-1.5 h-5 bg-cyan-500 rounded-sm inline-block"></span> Upcoming Fixtures
+                    </h2>
+                </div>
+                <div id="upcoming-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="animate-pulse bg-[#111827] border border-gray-800 rounded-2xl h-40"></div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- News Flash Column -->
+        <section class="space-y-6">
+            <div class="flex items-center justify-between border-b border-gray-800 pb-4">
+                <h2
+                    class="text-xl font-sporty font-bold uppercase tracking-wider text-amber-400 flex items-center gap-2">
+                    <span class="w-1.5 h-5 bg-amber-500 rounded-sm inline-block"></span> Google News Feed
+                </h2>
+                <span class="text-xs text-gray-400 font-medium">Auto-updates every 5m</span>
+            </div>
+
+            <div id="news-container" class="space-y-4">
+                <div class="animate-pulse bg-[#111827] border border-gray-800 rounded-2xl h-24"></div>
+                <div class="animate-pulse bg-[#111827] border border-gray-800 rounded-2xl h-24"></div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // Helper function to format dates for the ESPN API (YYYYMMDD)
+        function getApiDateString(date) {
+            const yyyy = date.getFullYear();
+            const mm = String(date.getMonth() + 1).padStart(2, '0');
+            const dd = String(date.getDate()).padStart(2, '0');
+            return `${yyyy}${mm}${dd}`;
+        }
+
+        async function fetchScores() {
+            const recentContainer = document.getElementById('recent-container');
+            const upcomingContainer = document.getElementById('upcoming-container');
+
+            try {
+                const requests = [];
+
+                for (let i = 0; i < 7; i++) {
+                    const d = new Date();
+                    d.setDate(d.getDate() - i);
+
+                    requests.push(
+                        fetch(
+                            `https://site.api.espn.com/apis/site/v2/sports/soccer/all/scoreboard?dates=${getApiDateString(d)}`
+                        )
+                    );
+                }
+
+                const responses = await Promise.all(requests);
+                const jsons = await Promise.all(responses.map(r => r.json()));
+
+                const allEvents = jsons.flatMap(j => j.events || []);
+
+
+                // Remove duplicates just in case the API overlaps dates
+                const uniqueEvents = Array.from(new Map(allEvents.map(e => [e.id, e])).values());
+
+                const parsedMatches = uniqueEvents.map(event => {
+                    const competition = event.competitions[0];
+                    const homeData = competition.competitors.find(team => team.homeAway === 'home');
+                    const awayData = competition.competitors.find(team => team.homeAway === 'away');
+
+                    const localKickoff = new Date(event.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    const localDate = new Date(event.date).toLocaleDateString([], { month: 'short', day: 'numeric' });
+
+                    return {
+                        id: event.id,
+                        date: new Date(event.date), // Store raw date for sorting
+                        homeTeam: homeData.team.shortDisplayName || homeData.team.name,
+                        awayTeam: awayData.team.shortDisplayName || awayData.team.name,
+                        homeScore: homeData.score !== undefined && event.status.type.state !== 'pre' ? homeData.score : "-",
+                        awayScore: awayData.score !== undefined && event.status.type.state !== 'pre' ? awayData.score : "-",
+                        status: event.status.type.shortDetail,
+                        state: event.status.type.state,
+                        playTime: `${localDate}, ${localKickoff}`,
+                        info: event.season.slug || "Global Matchday",
+                        homeIcon: homeData.team.logo || `https://placehold.co/24x24/111827/FFF?text=${homeData.team.abbreviation || '⚽'}`,
+                        awayIcon: awayData.team.logo || `https://placehold.co/24x24/111827/FFF?text=${awayData.team.abbreviation || '⚽'}`
+                    };
+                });
+
+                // Filter into completed vs upcoming/live
+                let recentMatches = parsedMatches.filter(m => m.state === 'post');
+                let upcomingMatches = parsedMatches.filter(m => m.state === 'pre' || m.state === 'in');
+
+                // Sort recent matches so the absolute newest ones are at the top, limit to 8
+                recentMatches.sort((a, b) => {
+                    if (b.date.getTime() !== a.date.getTime()) {
+                        return b.date - a.date;
+                    }
+                    return b.id.localeCompare(a.id);
+                });
+                recentMatches = recentMatches.slice(0, 8);
+
+                // Sort upcoming matches chronologically, limit to 8
+                upcomingMatches.sort((a, b) => a.date - b.date);
+                upcomingMatches = upcomingMatches.slice(0, 8);
+
+                renderMatchBlock(recentContainer, recentMatches, "No completed matches found for this matchday cycle.");
+                renderMatchBlock(upcomingContainer, upcomingMatches, "No upcoming fixtures listed for the rest of today.");
+
+            } catch (err) {
+                console.error("Feed error:", err);
+                const errorMarkup = `<div class="col-span-full p-4 text-xs text-red-400 text-center">Network link down. Retrying...</div>`;
+                recentContainer.innerHTML = errorMarkup;
+                upcomingContainer.innerHTML = errorMarkup;
+            }
+        }
+
+        function renderMatchBlock(container, matches, emptyMessage) {
+            if (matches.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full py-12 text-center border border-dashed border-gray-800 rounded-2xl">
+                        <p class="text-sm text-gray-500">${emptyMessage}</p>
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = matches.map(match => {
+                const isLive = match.state === 'in';
+                const statusDisplay =
+                    match.state === 'post'
+                        ? `${match.playTime} • FINAL`
+                        : isLive
+                            ? match.status
+                            : match.playTime;
+
+                return `
+                <div class="bg-gradient-to-b from-[#111827] to-[#161f30] border ${isLive ? 'border-emerald-500/40 shadow-lg shadow-emerald-950/20' : 'border-gray-800/80'} rounded-2xl p-5 flex flex-col justify-between group transition-all duration-300 hover:-translate-y-1 hover:border-gray-700">
+                    <div class="flex justify-between items-center mb-4 gap-2">
+                        <span class="text-[10px] uppercase bg-gray-800 border border-gray-700/50 px-2.5 py-1 rounded-md text-gray-400 font-bold tracking-wider max-w-[150px] truncate">${match.info.replace(/-/g, ' ')}</span>
+                        <span class="text-[11px] font-sporty font-extrabold px-2.5 py-0.5 rounded-full tracking-wider ${isLive ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30 animate-pulse' : 'bg-gray-800 text-gray-400'} whitespace-nowrap">${statusDisplay}</span>
+                    </div>
+                    <div class="space-y-3 my-2">
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center gap-3">
+                                <img src="${match.homeIcon}" class="w-6 h-6 object-contain">
+                                <span class="font-sporty text-xl tracking-wide uppercase font-semibold group-hover:text-emerald-400 transition-colors">${match.homeTeam}</span>
+                            </div>
+                            <span class="text-3xl font-sporty font-extrabold ${isLive ? 'text-emerald-400' : 'text-gray-300'}">${match.homeScore}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center gap-3">
+                                <img src="${match.awayIcon}" class="w-6 h-6 object-contain">
+                                <span class="font-sporty text-xl tracking-wide uppercase font-semibold group-hover:text-emerald-400 transition-colors">${match.awayTeam}</span>
+                            </div>
+                            <span class="text-3xl font-sporty font-extrabold ${isLive ? 'text-emerald-400' : 'text-gray-300'}">${match.awayScore}</span>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        async function fetchNews() {
+            const container = document.getElementById('news-container');
+            try {
+                const googleNewsRss = encodeURIComponent('https://news.google.com/rss/search?q=World+Cup+Football');
+                const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${googleNewsRss}`);
+                const data = await res.json();
+
+                if (data.status === 'ok') {
+                    container.innerHTML = data.items.slice(0, 10).map(item => `
+                        <article class="bg-[#111827] border border-gray-800/60 p-4 rounded-xl transition-all duration-300 hover:border-amber-500/30 hover:bg-[#151f33] group relative overflow-hidden">
+                            <div class="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-amber-400 to-amber-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                            <div class="flex justify-between items-center gap-2 mb-1.5">
+                                <span class="text-[10px] text-amber-400 uppercase tracking-wider font-extrabold truncate max-w-[150px]">${item.author || 'BREAKING NEWS'}</span>
+                                <span class="text-[10px] text-gray-500 font-medium shrink-0">${new Date(item.pubDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                            </div>
+                            <h3 class="font-semibold text-sm text-gray-200 line-clamp-2 leading-snug group-hover:text-white transition-colors">
+                                <a href="${item.link}" target="_blank" class="hover:underline focus:outline-none decoration-amber-400 underline-offset-2">
+                                    ${item.title.split(' - ')[0]}
+                                </a>
+                            </h3>
+                        </article> `).join('');
+                }
+            } catch (err) {
+                container.innerHTML = `<div class="p-4 text-xs text-red-400 text-center">Failed to load news feed.</div>`;
+            }
+        }
+
+        // Run data loops
+        fetchScores();
+        fetchNews();
+
+        setInterval(fetchScores, 30000); // Live scores update smoothly every 30 seconds
+        setInterval(fetchNews, 300000);  // News updates every 5 minutes
+    </script>
+</body>
+
+</html>
