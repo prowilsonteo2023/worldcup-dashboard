@@ -237,7 +237,7 @@
         async function fetchNews() {
             const container = document.getElementById('news-container');
             try {
-                /** Free api to query news **/
+                /** Free api to query news with cache results **/
                 const googleNewsRss = encodeURIComponent('https://news.google.com/rss/search?q=World+Cup+Football');
                 const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${googleNewsRss}`);
                 //const res = await fetch(`https://rss-json-converter.prowilson.workers.dev/?rss_url=${googleNewsRss}`);
